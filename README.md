@@ -1,13 +1,23 @@
 # clojure sentiment analysis 
 
-This is a clojure utility that fetches tweets, analyzes them using 
-[Vader](https://github.com/apanimesh061/VaderSentimentJava) and inserts the data into a sqlite database.
+A clojure utility that fetches tweets, analyzes them using 
+[Vader](https://github.com/apanimesh061/VaderSentimentJava) and inserts the data into sqlite databases.
 
 ## Usage
 
-Register your application as described [here](https://developer.twitter.com/en/docs/basics/apps/overview).
+Register your twitter application as described [here](https://developer.twitter.com/en/docs/basics/apps/overview).
 
 ### Building
+
+Make sure [Leiningen](https://leiningen.org/) is installed.
+
+Then just:
+
+```sh
+lein uberjar
+```
+
+see below how to execute the utility using the produced jar.
 
 ### Running using Leiningen
 
@@ -17,7 +27,7 @@ Create a `profiles.clj` file:
 cp profiles.clj.example profiles.clj
 ```
 
-Update you twitter app key and secret
+and set your twitter app key and secret this file.
 
 Run
 
@@ -25,21 +35,18 @@ Run
 lein run clojurescript,thewitcher
 ```
 
-### Running 
+### Uber run
+
+If you don't want to build and/or install Leiningen, just grab a prebuilt jar from releases.
 
 ```sh
-
+java -DTWITTER_APP_KEY=xxx -DTWITTER_APP_SECRET=xxx -jar target/jsa-0.X-X-standalone.jar clojurescript,thewitcher
 ```
 
+## Data
 
-```sh
-java -DTWITTER_APP_KEY=xxx -DTWITTER_APP_SECRET=xxx -jar target/jsa-0.1.0-SNAPSHOT-standalone.jar clojurescript,thewitcher
-```
-
-
-
-
-FIXME
+The produced data will be stored in sqlite databases - each hashtag will get its own database - put 
+in a `db` folder.
 
 ## License
 
