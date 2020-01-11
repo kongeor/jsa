@@ -13,7 +13,7 @@
 (defn get-creds []
   (oauth/make-oauth-creds (env :twitter-app-key) (env :twitter-app-secret)))
 
-(defn get-tweets-after [hashtag id]
+(defn get-tweets-after [query id]
   (let [my-creds (get-creds)
         tweets (api/search-tweets
                  :oauth-creds my-creds
@@ -21,14 +21,14 @@
                           :lang "en"
                           :count 100
                           :max_id id
-                          :q (str hashtag " AND -filter:retweets AND -filter:replies")
+                          :q (str query " AND -filter:retweets AND -filter:replies")
                           :tweet_mode "extended"})]
     (mapv (fn [e] [(:id e) (:full_text e)])
       (-> tweets :body :statuses))))
 
-(defn insert-tweet-data [[id text]]
+(defn insert-tweet-data [[id text] query]
   (try
-    (db/insert-tweet id text)
+    (db/insert-tweet id text query)
     (catch Exception e
       (println "Could not insert tweet" e))))
 
@@ -58,33 +58,43 @@
 
 #_(analyze-tweets-without-polarity)
 
-(defn run [hashtag]
-  (assert hashtag "hashtag not specified")
-  (db/set-datasource-by-name! hashtag)
-  (loop [max-id (db/find-min-id)]
-    (println "Processing" hashtag "tweets after" max-id)
-    (let [tweets (get-tweets-after hashtag max-id)
-          min-id (apply min (map first tweets))]
-      (if (= max-id min-id)
-        (println "No new data fetched. Stopping ...")
+(defn run [query]
+  (assert query "query not specified")
+  (db/set-datasource-by-name! "tweets")
+  (let [max-db-id (db/find-max-id query)]
+    (loop [min-run-id nil]
+      (println "Processing" query "tweets after" min-run-id)
+      (let [tweets (get-tweets-after query min-run-id)
+            _ (println "Found" (count tweets) "for" query)
+            min-id (apply min (map first tweets))
+            recur? (and (not= min-run-id min-id)
+                     (or (nil? max-db-id) (> min-id max-db-id)))]
         (do
           (doseq [t tweets]
-            (insert-tweet-data t))
+            (insert-tweet-data t query))
           (analyze-tweets-without-polarity)
           (Thread/sleep 1000)
-          (recur min-id))))))
+          (if recur?
+            (recur min-id)
+            (println "no new data")))))))
 
-(defn run-all [hashtags]
-  (let [tags (clojure.string/split hashtags #",")]
+(comment
+  (run "super mario bros, links awakening"))
+
+(defn run-all [queries]
+  (let [tags (clojure.string/split queries #",")]
     (doseq [t tags]
       (run t))))
 
 
 (comment
+  (run-all "clojure")
   (run-all "clojure,clojurescript,golang,haskell")
   (run-all "clojurescript")
   (run-all "rustlang,java,ruby,python,javascript")
   (run-all "python,javascript")
+  (run-all "red alert, super mario")
+  (run-all "super mario bros, links awakening")
   (get-tweets-after nil))
 
 

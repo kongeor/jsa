@@ -23,6 +23,8 @@
   (jdbc/execute! @ds
     ["CREATE TABLE IF NOT EXISTS tweets (
       id INTEGER NOT NULL UNIQUE,
+      created_at DATETIME NOT NULL,
+      query TEXT,
       text TEXT NOT NULL,
       negative REAL,
       neutral REAL,
@@ -31,6 +33,8 @@
     )"])
   (jdbc/execute! @ds
     ["CREATE INDEX IF NOT EXISTS idx_tweets_negative ON tweets(negative)"])
+  (jdbc/execute! @ds
+    ["CREATE INDEX IF NOT EXISTS idx_tweets_created_at ON tweets(created_at)"])
   )
 
 (defn set-datasource-by-name! [name]
@@ -54,21 +58,29 @@
 
 #_(count (find-tweets-without-polarity))
 
-(defn find-min-id []
+(defn find-min-id [query]
   (:id
     (jdbc/execute-one! @ds
       (sql/format
         {:select [[:%min.id :id]]
-         :from [:tweets]}))))
+         :from [:tweets]
+         :where [:= :query query]}))))
 
+(defn find-max-id [query]
+  (:id
+    (jdbc/execute-one! @ds
+      (sql/format
+        {:select [[:%max.id :id]]
+         :from [:tweets]
+         :where [:= :query query]}))))
 
-(defn insert-tweet [id tweet]
+(defn insert-tweet [id tweet query]
   (when-not (find-tweet-by-id id)
     (jdbc/execute! @ds
       (->
         (insert-into :tweets)
-        (columns :id :text)
-        (values [[id tweet]])
+        (columns :id :created_at :text :query)
+        (values [[id (java.util.Date.) tweet query]])
         sql/format))))
 
 (defn update-polarity [id polar]
